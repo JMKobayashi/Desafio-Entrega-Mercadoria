@@ -30,4 +30,8 @@ def addMap():
     )
     return {"map": map}
 
-
+@app.route('/retrievePaths/{mapName}')
+def retrievePaths(mapName):
+    map = DDB.get_item(TableName="Maps",Key={'mapName':{'S':mapName}})
+    paths = json.loads(map['Item']['paths']['S'])
+    return {'Paths':paths}
