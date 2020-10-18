@@ -1,29 +1,33 @@
+from botocore.parsers import JSONParser
 from chalice import Chalice
+from chalice.app import BadRequestError, Response
+import boto3
+import json
 
 app = Chalice(app_name='desafioProximaPorta')
 
+DDB = boto3.client('dynamodb')
 
-@app.route('/')
-def index():
-    return {'hello': 'world'}
+@app.route('/addMap', methods=['POST'])
+def addMap():
+    # Get the Map name and paths
+    map = app.current_request.json_body
+
+    # If don't receive a Map raise a BadRequestError
+    if not map:
+        raise BadRequestError("Missing Map")
+    mapName = map['mapName']
+    paths = json.dumps(map['paths'])
+    if not mapName and not paths:
+        raise BadRequestError("Map name or paths not found")
+    
+    DDB.put_item(
+        TableName="Maps",
+        Item={
+            "mapName":{'S':mapName},
+            "paths":{'S':paths}
+        }
+    )
+    return {"map": map}
 
 
-# The view function above will return {"hello": "world"}
-# whenever you make an HTTP GET request to '/'.
-#
-# Here are a few more examples:
-#
-# @app.route('/hello/{name}')
-# def hello_name(name):
-#    # '/hello/james' -> {"hello": "james"}
-#    return {'hello': name}
-#
-# @app.route('/users', methods=['POST'])
-# def create_user():
-#     # This is the JSON body the user sent in their POST request.
-#     user_as_json = app.current_request.json_body
-#     # We'll echo the json body back to the user in a 'user' key.
-#     return {'user': user_as_json}
-#
-# See the README documentation for more examples.
-#
