@@ -33,5 +33,8 @@ def addMap():
 @app.route('/retrievePaths/{mapName}')
 def retrievePaths(mapName):
     map = DDB.get_item(TableName="Maps",Key={'mapName':{'S':mapName}})
+    if not map:
+        BadRequestError("mapName was not found in the database")
     paths = json.loads(map['Item']['paths']['S'])
     return {'Paths':paths}
+    
