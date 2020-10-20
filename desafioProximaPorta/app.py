@@ -26,6 +26,12 @@ def addMap():
     # If one of the variable is missing raise a BadRequestError
     if (mapName == "" or mapName == None) or (paths == "" or paths == None):
         raise BadRequestError("Map name or paths not found")
+
+    # Verifying the format of paths with regular expression
+    regEx = r"\[(\[\w\,\w\,\d+\]\,)+\[\w\,\w\,\d+\]\]"
+    result = re.match(regEx,paths)
+    if(result == "" or result == None):
+        raise BadRequestError("Wrong path format")
     
     # Insert map in the database
     DDB.put_item(
