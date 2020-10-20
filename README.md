@@ -1,6 +1,6 @@
 # desafioProximaPorta
 
-The challenge was to create an API to calculate the cost of a trip.
+The challenge was to create an API to calculate the cost of a trip. The challenge was completed using Chalice and DynamoDB.
 
 ## 1. First API.
 ### The first API was an API to save new Maps.
