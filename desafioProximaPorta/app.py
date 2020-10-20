@@ -4,27 +4,30 @@ from chalice.app import BadRequestError, Response
 import boto3
 import json
 import re
-import dijkstra
 from dijkstra.dijkstra import DijkstraSPF
 from dijkstra.graph import Graph
 
 app = Chalice(app_name='desafioProximaPorta')
 
 DDB = boto3.client('dynamodb')
-
+# API to save new Maps in the database
 @app.route('/addMap', methods=['POST'])
 def addMap():
+
     # Get the Map name and paths
     map = app.current_request.json_body
 
     # If don't receive a Map raise a BadRequestError
-    if not map:
+    if map == "" or map == None:
         raise BadRequestError("Missing Map")
     mapName = map['mapName']
     paths = json.dumps(map['paths'])
-    if not mapName and not paths:
+    
+    # If one of the variable is missing raise a BadRequestError
+    if (mapName == "" or mapName == None) or (paths == "" or paths == None):
         raise BadRequestError("Map name or paths not found")
     
+    # Insert map in the database
     DDB.put_item(
         TableName="Maps",
         Item={
@@ -32,25 +35,40 @@ def addMap():
             "paths":{'S':paths}
         }
     )
+    # Return Map
     return {"map": map}
 
+# API to retrieve Paths from the database
 @app.route('/retrievePaths/{mapName}')
 def retrievePaths(mapName):
-    map = DDB.get_item(TableName="Maps",Key={'mapName':{'S':mapName}})
-    if not map:
-        BadRequestError("mapName was not found in the database")
-    paths = json.loads(map['Item']['paths']['S'])
-    return {'Paths':paths}
     
-@app.route('/costCalculation', methods=['POST'])
+    # Retrieve Map from the database
+    map = DDB.get_item(TableName="Maps",Key={'mapName':{'S':mapName}})
+    
+    # If there is no map with the name provided raise a BadRequestError 
+    if map == "" or map == None:
+        BadRequestError("mapName was not found in the database")
+    
+    # Get the Map Paths from the map variable and encode in JSON format to return
+    paths = json.loads(map['Item']['paths']['S'])
+
+    # Return paths
+    return {'Paths':paths}
+
+# API to calculate the Cost, Path and Distance
+@app.route('/costAndPathCalculation', methods=['POST'])
 def costCalculation():
+
+    # Get the Map Name, Start Point, End Point, Autonomy and Value Per Liter
     data = app.current_request.json_body
-    if (not data['mapName'] or not data['startPoint'] or 
-        not data['startPoint'] or not data['autonomy'] or 
-        not data['endPoint'] or not data['valuePerLiter']):
+    if ((data['mapName'] == "" or data['mapName'] == None) or 
+        (data['startPoint'] == "" or data['startPoint'] == None) or
+        (data['EndPoint'] == "" or data['EndPoint'] == None) or
+        (data['autonomy'] == "" or data['autonomy'] == None) or
+        (data['valuePerLiter'] == "" or data['valuePerLiter'] == None)):
         BadRequestError('One or more parameters are missing!')
 
-
+    # Assign parameters to variables
     mapName = data['mapName']
     startPoint = data['startPoint']
     autonomy = int(data['autonomy'])
@@ -58,24 +76,35 @@ def costCalculation():
     valuePerLiter = float(data['valuePerLiter'])
 
 
-    
+    # Retrieve paths from the database
     paths = retrievePaths(mapName)
     paths = paths['Paths']
     regEx = r"\[\w+\,\w+\,\d+\]"
     paths = list(re.findall(regEx,paths))
 
+    # Create Graph with the paths retrieved from the database
     graph = Graph()
     for i in range(len(paths)):
         edges = re.findall(r"\w+",paths[i])
 
         graph.add_edge(edges[0],edges[1],int(edges[2]))
 
+    # Setting the initial parameters in the Dijkstra function
     dijkstra = DijkstraSPF(graph, startPoint)
+
+    # Calculating the distance to the End Point
     distance = dijkstra.get_distance(endPoint)
+
+    # Creating a string with the shortest path
     path = str(" -> ".join(dijkstra.get_path(endPoint)))
+    
+    # Calculating the final cost of the trip
     cost = (distance / autonomy)*valuePerLiter
+
+    # Creating a string with all informations
     returnText = str("The shortest route from "+ startPoint +" to "+ endPoint
                     +" is "+ path + " with a total distance of "+ str(distance)
                     +" and it will cost $"+ str(cost))
 
     return {'Cost':returnText}
+
