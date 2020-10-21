@@ -18,7 +18,7 @@ def addMap():
     map = app.current_request.json_body
 
     # If don't receive a Map raise a BadRequestError
-    if map == "" or map == None:
+    if map == "" or map == None or not map:
         raise BadRequestError("Missing Map")
 
     # Verifying the format of paths with regular expression
@@ -28,7 +28,8 @@ def addMap():
         raise BadRequestError("Wrong Path format")
 
     # If one of the variable is missing raise a BadRequestError
-    if (map['mapName'] == "" or map['mapName'] == None) or (map['paths'] == "" or map['paths'] == None):
+    if ((map['mapName'] == "" or map['mapName'] == None or not map['mapName']) or 
+        (map['paths'] == "" or map['paths'] == None or not map['paths'])):
         raise BadRequestError("Map name or paths not found")
 
     mapName = map['mapName']
@@ -53,8 +54,8 @@ def retrievePaths(mapName):
     map = DDB.get_item(TableName="Maps",Key={'mapName':{'S':mapName}})
     
     # If there is no map with the name provided raise a BadRequestError 
-    if map == "" or map == None:
-        BadRequestError("mapName was not found in the database")
+    if map == "" or map == None or not map:
+        raise BadRequestError("mapName was not found in the database")
     
     # Get the Map Paths from the map variable and encode in JSON format to return
     paths = json.loads(map['Item']['paths']['S'])
@@ -68,12 +69,12 @@ def costCalculation():
 
     # Get the Map Name, Start Point, End Point, Autonomy and Value Per Liter
     data = app.current_request.json_body
-    if ((data['mapName'] == "" or data['mapName'] == None) or 
-        (data['startPoint'] == "" or data['startPoint'] == None) or
-        (data['endPoint'] == "" or data['endPoint'] == None) or
-        (data['autonomy'] == "" or data['autonomy'] == None) or
-        (data['valuePerLiter'] == "" or data['valuePerLiter'] == None)):
-        BadRequestError('One or more parameters are missing!')
+    if ((data['mapName'] == "" or data['mapName'] == None or not data['mapName']) or 
+        (data['startPoint'] == "" or data['startPoint'] == None or not data['startPoint']) or
+        (data['endPoint'] == "" or data['endPoint'] == None or not data['endPoint']) or
+        (data['autonomy'] == "" or data['autonomy'] == None or not data['autonomy']) or
+        (data['valuePerLiter'] == "" or data['valuePerLiter'] == None) or not data['valuePerLiter']):
+        raise BadRequestError('One or more parameters are missing!')
 
     # Assign parameters to variables
     mapName = data['mapName']
@@ -89,13 +90,13 @@ def costCalculation():
     
     # Checking if starPoint and endPoint exist in paths
     startPointCheck = re.findall(startPoint,paths)
-    if(startPointCheck == None):
-        BadRequestError("Start Point doesn't exists in the map")
+    if startPointCheck == []:
+        raise BadRequestError("Start Point doesn't exist in the map")
     endPointCheck = re.findall(endPoint,paths)
-    if(endPointCheck == None):
-        BadRequestError("End Point doesn't exists in the map")
+    if not endPointCheck:
+        raise BadRequestError("End Point doesn't exist in the map")
 
-    regEx = r"\[\w+\,\w+\,\d+\]"
+    #regEx = r"\[\w+\,\w+\,\d+\]"
     paths = list(re.findall(regEx,paths))
 
 
