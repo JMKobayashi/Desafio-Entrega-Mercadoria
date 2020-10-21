@@ -96,7 +96,7 @@ def costCalculation():
     if not endPointCheck:
         raise BadRequestError("End Point doesn't exist in the map")
 
-    #regEx = r"\[\w+\,\w+\,\d+\]"
+    regEx = r"\[\w+\,\w+\,\d+\]"
     paths = list(re.findall(regEx,paths))
 
 
