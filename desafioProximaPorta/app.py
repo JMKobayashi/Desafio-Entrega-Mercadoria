@@ -20,18 +20,19 @@ def addMap():
     # If don't receive a Map raise a BadRequestError
     if map == "" or map == None:
         raise BadRequestError("Missing Map")
-    mapName = map['mapName']
-    paths = json.dumps(map['paths'])
-    
-    # If one of the variable is missing raise a BadRequestError
-    if (mapName == "" or mapName == None) or (paths == "" or paths == None):
-        raise BadRequestError("Map name or paths not found")
 
     # Verifying the format of paths with regular expression
     regEx = r"\[(\[\w\,\w\,\d+\]\,)+\[\w\,\w\,\d+\]\]"
-    result = re.match(regEx,paths)
-    if(result == "" or result == None):
-        raise BadRequestError("Wrong path format")
+    result = re.match(regEx,map['paths'])
+    if(result == None):
+        raise BadRequestError("Wrong Path format")
+
+    # If one of the variable is missing raise a BadRequestError
+    if (map['mapName'] == "" or map['mapName'] == None) or (map['paths'] == "" or map['paths'] == None):
+        raise BadRequestError("Map name or paths not found")
+
+    mapName = map['mapName']
+    paths = json.dumps(map['paths'])
     
     # Insert map in the database
     DDB.put_item(
@@ -69,7 +70,7 @@ def costCalculation():
     data = app.current_request.json_body
     if ((data['mapName'] == "" or data['mapName'] == None) or 
         (data['startPoint'] == "" or data['startPoint'] == None) or
-        (data['EndPoint'] == "" or data['EndPoint'] == None) or
+        (data['endPoint'] == "" or data['endPoint'] == None) or
         (data['autonomy'] == "" or data['autonomy'] == None) or
         (data['valuePerLiter'] == "" or data['valuePerLiter'] == None)):
         BadRequestError('One or more parameters are missing!')
@@ -85,8 +86,18 @@ def costCalculation():
     # Retrieve paths from the database
     paths = retrievePaths(mapName)
     paths = paths['Paths']
+    
+    # Checking if starPoint and endPoint exist in paths
+    startPointCheck = re.findall(startPoint,paths)
+    if(startPointCheck == None):
+        BadRequestError("Start Point doesn't exists in the map")
+    endPointCheck = re.findall(endPoint,paths)
+    if(endPointCheck == None):
+        BadRequestError("End Point doesn't exists in the map")
+
     regEx = r"\[\w+\,\w+\,\d+\]"
     paths = list(re.findall(regEx,paths))
+
 
     # Create Graph with the paths retrieved from the database
     graph = Graph()
